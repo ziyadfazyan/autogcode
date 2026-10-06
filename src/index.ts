@@ -3,6 +3,7 @@ import { google } from 'googleapis';
 import { createDriveClient } from './drive.js';
 import { createSheetsClient } from './sheets.js';
 import { processDriveSvgs } from './processor.js';
+import type { ToolMode } from './gcode.js';
 
 export interface AppConfig {
   driveRootFolderId: string;
@@ -14,10 +15,28 @@ export interface AppConfig {
   forceRegenerate: boolean;
   createMissingRow: boolean;
   feedRate: number;
+  drawFeedRate: number;
   travelFeedRate: number;
   safeZ: number;
-  laserMode: boolean;
+  toolMode: ToolMode;
+  toolOnCommand: string;
+  toolOffCommand: string;
+  laserOnCommand: string;
+  laserOffCommand: string;
+  laserDelay: number;
   laserPower: number;
+  penUpZ: number;
+  penDownZ: number;
+  penUpCommand: string;
+  penDownCommand: string;
+  penDelay: number;
+  passes: number;
+  passDepth: number;
+  offsetX: number;
+  offsetY: number;
+  mirrorX: boolean;
+  mirrorY: boolean;
+  returnToOrigin: boolean;
 }
 
 function requiredEnv(name: string): string {
@@ -46,6 +65,19 @@ function optionalBoolean(name: string, fallback: boolean): boolean {
   throw new Error(`Environment variable ${name} harus true atau false.`);
 }
 
+function optionalString(name: string, fallback: string): string {
+  const value = process.env[name]?.trim();
+  return value || fallback;
+}
+
+function optionalToolMode(): ToolMode {
+  const value = optionalString('TOOL_MODE', 'pen').toLowerCase();
+  if (value === 'laser' || value === 'pen' || value === 'spindle') {
+    return value;
+  }
+  throw new Error('Environment variable TOOL_MODE harus laser, pen, atau spindle.');
+}
+
 function loadConfig(): AppConfig {
   return {
     driveRootFolderId: requiredEnv('GOOGLE_DRIVE_ROOT_FOLDER_ID'),
@@ -57,10 +89,28 @@ function loadConfig(): AppConfig {
     forceRegenerate: optionalBoolean('FORCE_REGENERATE', false),
     createMissingRow: optionalBoolean('CREATE_MISSING_ROW', false),
     feedRate: optionalNumber('FEED_RATE', 1000),
-    travelFeedRate: optionalNumber('TRAVEL_FEED_RATE', 3000),
+    drawFeedRate: optionalNumber('DRAW_FEED_RATE', optionalNumber('FEED_RATE', 2500)),
+    travelFeedRate: optionalNumber('TRAVEL_FEED_RATE', 10000),
     safeZ: optionalNumber('SAFE_Z', 5),
-    laserMode: optionalBoolean('LASER_MODE', false),
-    laserPower: optionalNumber('LASER_POWER', 1000)
+    toolMode: optionalToolMode(),
+    toolOnCommand: optionalString('TOOL_ON_COMMAND', 'M03 S0'),
+    toolOffCommand: optionalString('TOOL_OFF_COMMAND', 'M03 S200'),
+    laserOnCommand: optionalString('LASER_ON_COMMAND', optionalString('TOOL_ON_COMMAND', 'M03 S0')),
+    laserOffCommand: optionalString('LASER_OFF_COMMAND', optionalString('TOOL_OFF_COMMAND', 'M03 S200')),
+    laserDelay: optionalNumber('LASER_DELAY', 0.2),
+    laserPower: optionalNumber('LASER_POWER', 1000),
+    penUpZ: optionalNumber('PEN_UP_Z', 5),
+    penDownZ: optionalNumber('PEN_DOWN_Z', 0),
+    penUpCommand: optionalString('PEN_UP_COMMAND', 'M03 S200'),
+    penDownCommand: optionalString('PEN_DOWN_COMMAND', 'M03 S0'),
+    penDelay: optionalNumber('PEN_DELAY', 0.2),
+    passes: optionalNumber('PASSES', 1),
+    passDepth: optionalNumber('PASS_DEPTH', 2.0),
+    offsetX: optionalNumber('OFFSET_X', 0),
+    offsetY: optionalNumber('OFFSET_Y', 0),
+    mirrorX: optionalBoolean('MIRROR_X', false),
+    mirrorY: optionalBoolean('MIRROR_Y', false),
+    returnToOrigin: optionalBoolean('RETURN_TO_ORIGIN', true)
   };
 }
 

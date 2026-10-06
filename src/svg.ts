@@ -200,7 +200,7 @@ function parsePath(d: unknown): Point[][] {
       lastCubicControl = c2;
       lastQuadraticControl = null;
     } else if (upper === 'S') {
-      const reflected = lastCubicControl
+      const reflected: Point = lastCubicControl
         ? { x: current.x * 2 - lastCubicControl.x, y: current.y * 2 - lastCubicControl.y }
         : current;
       const c2 = point(relative);
@@ -217,7 +217,7 @@ function parsePath(d: unknown): Point[][] {
       lastQuadraticControl = c;
       lastCubicControl = null;
     } else if (upper === 'T') {
-      const reflected = lastQuadraticControl
+      const reflected: Point = lastQuadraticControl
         ? { x: current.x * 2 - lastQuadraticControl.x, y: current.y * 2 - lastQuadraticControl.y }
         : current;
       const end = point(relative);
